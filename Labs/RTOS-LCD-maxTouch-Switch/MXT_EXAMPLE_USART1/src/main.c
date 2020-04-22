@@ -53,6 +53,7 @@ typedef struct {
 	uint32_t x;         // posicao x
 	uint32_t y;         // posicao y
 	uint8_t status;
+	void (*callback)(t_but);
 } t_but;
 
 QueueHandle_t xQueueTouch;
@@ -186,8 +187,7 @@ void process_touch(t_but buts[], touchData touch, uint32_t n) {
 		t_but but = buts[i];
 		if(touch.x >= buts[i].x-buts[i].width/2 && touch.x <= buts[i].x + buts[i].width/2) {
 			if(touch.y >= buts[i].y-buts[i].height/2 && touch.y <= buts[i].y + buts[i].height/2) {
-				buts[i].status = !buts[i].status;
-				draw_button_new(but);
+				buts[i].callback(&buts[i]);
 			}
 		}
 	}
@@ -243,6 +243,11 @@ void mxt_handler(struct mxt_device *device, uint *x, uint *y)
   } while ((mxt_is_message_pending(device)) & (i < MAX_ENTRIES));
 }
 
+void callback(t_but *but) {
+	but->status = !but->status;
+	draw_button_new(*but);
+}
+
 /************************************************************************/
 /* tasks                                                                */
 /************************************************************************/
@@ -278,14 +283,14 @@ void task_lcd(void){
   
   t_but but0= {.width = 120, .height = 75,
 	  .colorOn = COLOR_TOMATO, .colorOff = COLOR_BLACK,
-  .x = ILI9488_LCD_WIDTH/2, .y = 40, .status = 1 };
+  .x = ILI9488_LCD_WIDTH/2, .y = 40, .status = 1, .callback = &callback };
   
     t_but but1= {.width = 120, .height = 75,
 	    .colorOn = COLOR_TOMATO, .colorOff = COLOR_GREEN,
-    .x = ILI9488_LCD_WIDTH/2, .y = 140, .status = 1 };
+    .x = ILI9488_LCD_WIDTH/2, .y = 140, .status = 1, .callback = &callback  };
 	t_but but2= {.width = 120, .height = 75,
 		.colorOn = COLOR_TOMATO, .colorOff = COLOR_BLACK,
-	.x = ILI9488_LCD_WIDTH/2, .y = 240, .status = 1 };
+	.x = ILI9488_LCD_WIDTH/2, .y = 240, .status = 1, .callback = &callback  };
 	
   t_but buts[] = {but0, but1, but2};
   
