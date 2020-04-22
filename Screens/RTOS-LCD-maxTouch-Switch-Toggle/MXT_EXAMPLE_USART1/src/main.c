@@ -17,7 +17,7 @@ void but1_callback(void);
 /************************************************************************/
 /* LCD + TOUCH                                                          */
 /************************************************************************/
-#define MAX_ENTRIES        3
+#define MAX_ENTRIES        10
 
 struct ili9488_opt_t g_ili9488_display_opt;
 const uint32_t BUTTON_W = 120;
@@ -37,7 +37,7 @@ const uint32_t BUTTON_Y = ILI9488_LCD_HEIGHT/2;
 #define TASK_MXT_STACK_SIZE            (2*1024/sizeof(portSTACK_TYPE))
 #define TASK_MXT_STACK_PRIORITY        (tskIDLE_PRIORITY)
 
-#define TASK_LCD_STACK_SIZE            (2*1024/sizeof(portSTACK_TYPE))
+#define TASK_LCD_STACK_SIZE            (4*1024/sizeof(portSTACK_TYPE))
 #define TASK_LCD_STACK_PRIORITY        (tskIDLE_PRIORITY)
 
 typedef struct {
@@ -225,8 +225,16 @@ void task_mxt(void){
     if (mxt_is_message_pending(&device)) {
       mxt_handler(&device, &touch.x, &touch.y);
       xQueueSend( xQueueTouch, &touch, 0);           /* send mesage to queue */
+      vTaskDelay(200);
+      
+      // limpa touch
+      while (mxt_is_message_pending(&device)){
+        mxt_handler(&device, NULL, NULL);
+        vTaskDelay(50);
+      }
     }
-    vTaskDelay(100);
+    
+    vTaskDelay(300);
   }
 }
 
@@ -237,7 +245,7 @@ void task_lcd(void){
   draw_screen();
   draw_button(0);
   
-  // Escreve HH:MM no LCD
+  // Escreve DEMO - BUT no LCD
   font_draw_text(&digital52, "DEMO - BUT", 0, 0, 1);
   
   // strut local para armazenar msg enviada pela task do mxt
