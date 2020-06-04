@@ -38,6 +38,16 @@ static bool gbTcpConnected = false;
 static char server_host_name[] = MAIN_SERVER_NAME;
 
 /************************************************************************/
+/* DEFINES                                                              */
+/************************************************************************/
+
+// LED PLACA
+#define LED_PLACA_PIO_ID ID_PIOC
+#define LED_PLACA_PIO PIOC
+#define LED_PLACA_PIN 8
+#define LED_PLACA_IDX_MASK (1 << LED_PLACA_PIN)
+
+/************************************************************************/
 /* RTOS                                                                 */
 /************************************************************************/
 
@@ -79,6 +89,12 @@ extern void vApplicationMallocFailedHook(void){
 /************************************************************************/
 /* funcoes                                                              */
 /************************************************************************/
+
+void initPeriphs() {
+	pmc_enable_periph_clk(LED_PLACA_PIO_ID);
+	pio_configure(LED_PLACA_PIO, PIO_OUTPUT_0, LED_PLACA_IDX_MASK, PIO_DEFAULT);
+	pio_set(LED_PLACA_PIO, LED_PLACA_IDX_MASK);
+}
 
 /************************************************************************/
 /* callbacks                                                            */
@@ -221,6 +237,11 @@ static void wifi_cb(uint8_t u8MsgType, void *pvMsg)
 /* TASKS                                                                */
 /************************************************************************/
 
+void sendRequest(char buffer[], char message[]) {
+	sprintf(buffer, "GET %s HTTP/1.1\r\n Accept: */*\r\n\r\n", message);
+	send(tcp_client_socket, g_sendBuffer, strlen((char *)g_sendBuffer), 0);
+}
+
 static void task_process(void *pvParameters) {
 
   printf("task process created \n");
@@ -254,8 +275,7 @@ static void task_process(void *pvParameters) {
 
       case GET:
       printf("STATE: GET \n");
-      sprintf((char *)g_sendBuffer, MAIN_PREFIX_BUFFER);
-      send(tcp_client_socket, g_sendBuffer, strlen((char *)g_sendBuffer), 0);
+      sendRequest(g_sendBuffer, "/status");
       state = ACK;
       break;
 
@@ -284,6 +304,17 @@ static void task_process(void *pvParameters) {
         printf(STRING_LINE);
         printf(p_recvMsg->pu8Buffer);
         printf(STRING_EOL);  printf(STRING_LINE);
+		
+		char ledInfo[4] = "led";
+		char *response;
+		
+		response = strstr(p_recvMsg->pu8Buffer, ledInfo);
+		if (strcmp(response[7], '1')) {
+			pio_set(LED_PLACA_PIO, LED_PLACA_IDX_MASK);
+		} else if (strcmp(response[7], '0')) {
+			pio_clear(LED_PLACA_PIO, LED_PLACA_IDX_MASK);
+		}
+		
         state = DONE;
       }
       else {
@@ -378,6 +409,7 @@ int main(void)
   /* Initialize the board. */
   sysclk_init();
   board_init();
+  initPeriphs();
 
   /* Initialize the UART console. */
   configure_console();
